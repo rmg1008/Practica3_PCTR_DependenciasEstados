@@ -4,47 +4,83 @@ import java.util.Enumeration;
 import java.util.Hashtable;
 
 public class Parque implements IParque{
-
-
-	// TODO 
+	private static final int MIN = 0;  // mínimo valor permitido
+	private static final int MAX = 50;  // máximo valor permitido
 	private int contadorPersonasTotales;
 	private Hashtable<String, Integer> contadoresPersonasPuerta;
+	private long tInicial;
+	private double tmedio;
 	
-	
-	public Parque() {
+	/*
+	 * Inicialización de variables en constructor
+	 */
+	public Parque() 
+	{
 		contadorPersonasTotales = 0;
-		contadoresPersonasPuerta = new Hashtable<String, Integer>();
+		contadoresPersonasPuerta = new Hashtable<>();
+		tInicial = System.currentTimeMillis();
+		tmedio = 0;
 	}
 
 
+	/*
+	 * 
+	 */
 	@Override
-	public void entrarAlParque(String puerta){		// TODO
+	public synchronized void entrarAlParque(String puerta)
+	{
+		comprobarAntesDeEntrar(); //check para determinar si el hilo puede continuar
 		
 		// Si no hay entradas por esa puerta, inicializamos
 		if (contadoresPersonasPuerta.get(puerta) == null){
 			contadoresPersonasPuerta.put(puerta, 0);
 		}
 		
-		// TODO
-				
-		
 		// Aumentamos el contador total y el individual
 		contadorPersonasTotales++;		
 		contadoresPersonasPuerta.put(puerta, contadoresPersonasPuerta.get(puerta)+1);
 		
+		
+		long tActual = System.currentTimeMillis();
+		tmedio = (tmedio + (tActual - tInicial)) / 2.0;
+		
 		// Imprimimos el estado del parque
 		imprimirInfo(puerta, "Entrada");
 		
-		// TODO
+		notifyAll();  // Se notifica al resto de hilos
 		
-		
-		// TODO
+		checkInvariante();
 		
 	}
 	
-	// 
-	// TODO Método salirDelParque
-	//
+	/*
+	 * 
+	 */
+	@Override
+	public synchronized void salirDelParque(String puerta) 
+	{
+		comprobarAntesDeSalir(); //check para determinar si el hilo puede continuar
+		
+		
+		// Si no hay entradas por esa puerta, inicializamos
+		if (contadoresPersonasPuerta.get(puerta) == null){
+			contadoresPersonasPuerta.put(puerta, 0);
+		}
+		
+		// Se decrementa la cantidad de personas en el parque y en la puerta
+		contadorPersonasTotales--;
+		contadoresPersonasPuerta.put(puerta, contadoresPersonasPuerta.get(puerta)-1);
+		
+		long tActual = System.currentTimeMillis();
+		tmedio = (tmedio + (tActual - tInicial)) / 2.0;
+		
+		// Imprimimos el estado del parque
+		imprimirInfo(puerta, "Salida");
+		
+		notifyAll();  // Se notifica al resto de hilos
+		
+		checkInvariante();
+	}
 	
 	
 	private void imprimirInfo (String puerta, String movimiento){
@@ -67,26 +103,41 @@ public class Parque implements IParque{
 		return sumaContadoresPuerta;
 	}
 	
+	/*
+	 * Comprueba que las restricciones del objeto se mantienen intactas
+	 */
 	protected void checkInvariante() {
 		assert sumarContadoresPuerta() == contadorPersonasTotales : "INV: La suma de contadores de las puertas debe ser igual al valor del contador del parte";
-		// TODO 
-		// TODO
-		
-		
+		assert contadorPersonasTotales >= MIN;
+		assert contadorPersonasTotales <= MAX;
 		
 	}
 
-	protected void comprobarAntesDeEntrar(){
-		//
-		// TODO
-		//
+	protected void comprobarAntesDeEntrar()
+	{
+		
+		while(sumarContadoresPuerta() >= MAX)
+		{
+			try {
+				wait(); // El hilo actual se bloquea si alcanza el máximo de aforo
+			} catch (InterruptedException e) {
+				Thread.currentThread().interrupt();
+				System.out.println("Hilo interrumpido");
+			}
+		}
 	}
 
-	protected void comprobarAntesDeSalir(){
-		//
-		// TODO
-		//
+	protected void comprobarAntesDeSalir()
+	{
+		while(sumarContadoresPuerta() <= MIN)
+		{
+			try {
+				wait(); // El hilo actual se bloquea si alcanza el mínimo de aforo
+			} catch (InterruptedException e) {
+				Thread.currentThread().interrupt();
+				System.out.println("Hilo interrumpido");
+			}
+		}
 	}
-
 
 }
